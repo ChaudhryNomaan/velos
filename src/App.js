@@ -199,7 +199,7 @@ const Home = () => (
       <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070" alt="Velos Archive" className="h-hero-img" />
       <div className="h-overlay">
         <h1 className="reveal-text">THE 2026 <br/> ARCHIVE</h1>
-        <p className="stagger-in" style={{ animationDelay: '0.4s' }}>MODULAR UTILITY {"//"} STRUCTURAL PERMANENCE</p>
+        <p className="stagger-in" style={{ animationDelay: '0.4s' }}>MODULAR UTILITY {" // "} STRUCTURAL PERMANENCE</p>
         <Link to="/category/LAB" className="h-btn stagger-in" style={{ animationDelay: '0.6s' }}>EXPLORE THE LAB</Link>
       </div>
     </section>
@@ -235,7 +235,7 @@ const Category = () => {
     <div className="cat-root">
       <aside className="cat-sidebar">
         <div className="cat-header-wrap">
-            <span className="cat-breadcrumb">ARCHIVE // {catId}</span>
+            <span className="cat-breadcrumb">ARCHIVE {" // "} {catId}</span>
             <nav className="cat-nav-list">
             {CAT_MAP[catId]?.map(sub => (
                 <button key={sub} className={activeSub === sub ? 'active' : ''} onClick={() => setActiveSub(sub)}>
@@ -285,7 +285,7 @@ const Product = () => {
       </div>
       <div className="pd-sidebar">
         <div className="pd-sticky-wrap stagger-in">
-          <button className="pd-back-link" onClick={() => navigate(-1)}>← BACK TO ARCHIVE</button>
+          <button className="pd-back-link" onClick={() => navigate(-1)}>{"←"} BACK TO ARCHIVE</button>
           <div className="pd-top">
             <span className="pd-sku">{p.sku}</span>
             <h1>{p.name}</h1>
@@ -310,7 +310,7 @@ const Product = () => {
               <summary>SPECIFICATIONS</summary>
               <div className="p-content">
                 <ul className="spec-list">
-                  {p.techSpecs.map(s => <li key={s}>// {s}</li>)}
+                  {p.techSpecs.map(s => <li key={s}>{"// "} {s}</li>)}
                 </ul>
               </div>
             </details>
