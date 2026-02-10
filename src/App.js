@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 
-const ASSETS = [
-  { v: "https://assets.mixkit.co/videos/preview/mixkit-fashion-model-showing-off-a-black-outfit-34505-large.mp4", i: "https://images.unsplash.com/photo-1552664199-fd31f7431a55?q=80&w=1600" },
-  { v: "https://assets.mixkit.co/videos/preview/mixkit-woman-modeling-a-white-dress-34506-large.mp4", i: "https://images.unsplash.com/photo-1539109132314-3475d24c21c0?q=80&w=1600" },
-  { v: "https://assets.mixkit.co/videos/preview/mixkit-stylish-man-in-a-leather-jacket-standing-outdoors-34493-large.mp4", i: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1600" },
-  { v: "https://assets.mixkit.co/videos/preview/mixkit-beautiful-woman-in-a-silk-dress-41551-large.mp4", i: "https://images.unsplash.com/photo-1581044777550-4cfa60707c03?q=80&w=1600" },
-  { v: "https://assets.mixkit.co/videos/preview/mixkit-model-holding-a-glass-of-champagne-34515-large.mp4", i: "https://images.unsplash.com/photo-1509631179647-0177331693ae?q=80&w=1600" },
-  { v: "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-lighting-in-a-studio-34503-large.mp4", i: "https://images.unsplash.com/photo-1445205170230-053b830c6050?q=80&w=1600" }
-];
+// Keeping ASSETS as a fallback for categories outside of MEN/WOMEN
+const ASSETS = Array.from({ length: 45 }, (_, i) => ({
+  v: `/images/vid${i + 1}.mp4`, 
+  i: `/images/img${i + 1}.jpg`
+}));
 
 const CAT_MAP = {
-  "WOMEN": ["Outerwear", "Tailoring", "Knitwear", "Accessories", "Footwear", "Base Layer", "Draped Forms"],
-  "MEN": ["Technical", "Suits", "Leather", "Basics", "Industrial Footwear", "Utility Vests", "Cargo Systems"],
+  "WOMEN": ["accessories", "base layer", "draped form", "footwear", "kneatwear", "outerwear", "tailoring"],
+  "MEN": ["accessories", "base layer", "draped form", "footwear", "kneatwear", "outerwear", "tailoring"],
   "LAB": ["Prototyping", "Hardware", "Liminal Space", "Bio-Textiles", "Wearable Tech", "Acoustic Shells"],
   "RE-SALE": ["2022 Archive", "2023 Archive", "Sample Sale", "Refurbished Units", "Collector Pieces"],
   "COMMUNE": ["Editorial", "Film", "Soundtrack", "Store Locations", "Manifesto"]
@@ -21,27 +18,31 @@ const CAT_MAP = {
 const MASTER_VAULT = [];
 Object.keys(CAT_MAP).forEach((cat, ci) => {
   CAT_MAP[cat].forEach((sub, si) => {
+    const actualImageCount = 20; 
     for (let i = 1; i <= 34; i++) {
+      const imageIndex = ((i - 1) % actualImageCount) + 1;
       const idx = (ci + si + i) % ASSETS.length;
-      const idxAlt1 = (idx + 1) % ASSETS.length;
-      const idxAlt2 = (idx + 2) % ASSETS.length;
-      const isCommune = cat === "COMMUNE";
+      const isClothes = cat === "WOMEN" || cat === "MEN";
+      const genderPath = cat.toLowerCase();
+      const subPath = sub.toLowerCase(); 
+      const localBase = isClothes ? `/${genderPath}/${subPath}/${imageIndex}` : `/images/${genderPath}/${subPath}/${imageIndex}`;
+
       MASTER_VAULT.push({
         id: `velos-${cat}-${sub}-${i}`.toLowerCase().replace(/\s+/g, '-'),
         category: cat,
         subCategory: sub,
-        name: isCommune ? `${sub.toUpperCase()} // VOL.${i < 10 ? '0'+i : i}` : `${sub.toUpperCase()} UNIT ${100 + i}`,
+        name: cat === "COMMUNE" ? `${sub.toUpperCase()} // VOL.${i < 10 ? '0'+i : i}` : `${sub.toUpperCase()} UNIT ${100 + i}`,
         price: (450 + (si * 50) + (i * 15)).toFixed(2),
         sku: `VL-26-${cat.slice(0, 2)}-${si}${i}`,
-        image: ASSETS[idx].i,
-        images: [ASSETS[idx].i, ASSETS[idxAlt1].i, ASSETS[idxAlt2].i],
-        video: ASSETS[idx].v,
-        description: isCommune 
+        basePath: localBase,
+        isClothes: isClothes,
+        fallbackIdx: idx,
+        description: cat === "COMMUNE" 
           ? "A visual exploration of the VELOS philosophy through the lens of industrial photography."
           : "A modular garment engineered for the 2026 climate shift. Features articulated joints and moisture-wicking membranes.",
-        techSpecs: isCommune ? ["Digital Format", "4K Render", "Archive Access"] : ["Articulated Fit", "3L Gore-Tex", "Magnetic Closures"],
-        materials: isCommune ? "Digital Media" : "3-Layer Laminated Nylon / YKK Aquaguard Zippers",
-        care: isCommune ? "N/A" : "Clean with damp cloth. Do not dry clean."
+        techSpecs: cat === "COMMUNE" ? ["Digital Format", "4K Render", "Archive Access"] : ["Articulated Fit", "3L Gore-Tex", "Magnetic Closures"],
+        materials: cat === "COMMUNE" ? "Digital Media" : "3-Layer Laminated Nylon / YKK Aquaguard Zippers",
+        care: cat === "COMMUNE" ? "N/A" : "Clean with damp cloth. Do not dry clean."
       });
     }
   });
@@ -69,6 +70,8 @@ export const VelosProvider = ({ children }) => {
 
 const MinimalCursor = () => {
   const dotRef = useRef(null);
+  const [isHovering, setIsHovering] = useState(false);
+
   useEffect(() => {
     const onMove = (e) => {
       if (dotRef.current) {
@@ -76,20 +79,89 @@ const MinimalCursor = () => {
         dotRef.current.style.top = `${e.clientY}px`;
       }
     };
+    const onOver = (e) => {
+      if (e.target.closest('a, button, summary, .cat-card')) setIsHovering(true);
+      else setIsHovering(false);
+    };
+
     window.addEventListener('mousemove', onMove);
-    return () => window.removeEventListener('mousemove', onMove);
+    window.addEventListener('mouseover', onOver);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseover', onOver);
+    };
   }, []);
-  return <div ref={dotRef} className="cursor-dot" />;
+
+  return <div ref={dotRef} className={`cursor-dot ${isHovering ? 'hover' : ''}`} />;
 };
 
-const Media = ({ v, i, className="" }) => (
-  <div className={`media-frame ${className}`}>
-    <video src={v} autoPlay loop muted playsInline poster={i} />
-  </div>
-);
+const Media = ({ item, className="" }) => {
+  const [stage, setStage] = useState(0); 
+  const extensions = ['mp4', 'jpg', 'webp'];
+
+  useEffect(() => {
+    setStage(0);
+  }, [item.basePath]);
+
+  const handleError = () => {
+    if (stage < 3) setStage(prev => prev + 1);
+  };
+
+  if (!item.isClothes) {
+    return (
+      <div className={`media-frame ${className}`}>
+        <img src={ASSETS[item.fallbackIdx].i} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      </div>
+    );
+  }
+
+  if (stage === 3) {
+      return (
+        <div className={`media-frame ${className}`}>
+             <img src={ASSETS[item.fallbackIdx].i} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      );
+  }
+
+  const currentPath = `${item.basePath}.${extensions[stage]}`;
+
+  return (
+    <div className={`media-frame ${className}`}>
+      {stage === 0 ? (
+        <video 
+          key={currentPath + "-vid"}
+          src={currentPath} 
+          autoPlay loop muted playsInline 
+          onError={handleError}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        <img 
+          key={currentPath + "-img"}
+          src={currentPath} 
+          alt="" 
+          onError={handleError} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      )}
+    </div>
+  );
+};
 
 const Nav = () => {
   const { isMenuOpen, setIsMenuOpen, cart, setIsBagOpen } = useContext(VelosContext);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const currentScroll = window.scrollY;
+      setScrollProgress((currentScroll / totalScroll) * 100);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <header className="site-nav">
       <div className="nav-container">
@@ -109,6 +181,7 @@ const Nav = () => {
           </button>
         </div>
       </div>
+      <div className="scroll-progress" style={{ width: `${scrollProgress}%` }} />
     </header>
   );
 };
@@ -137,7 +210,7 @@ const ShoppingBag = () => {
             cart.map((item, idx) => (
               <div key={item.cartId} className="bag-item stagger-in" style={{ animationDelay: `${idx * 0.1}s` }}>
                 <div className="bag-item-img">
-                  <img src={item.image} alt="" />
+                  <Media item={item} />
                 </div>
                 <div className="bi-details">
                   <div className="bi-top">
@@ -173,7 +246,7 @@ const MobileOverlay = () => {
       <button className="menu-close-x" onClick={() => setIsMenuOpen(false)}>CLOSE</button>
       <div className="menu-inner">
         <div className="menu-visual">
-          <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1600" alt="Menu Visual" />
+          <video src="/images/hero-sectio.mp4" autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <div className="menu-content">
           <div className="menu-header">MENU</div>
@@ -196,7 +269,15 @@ const MobileOverlay = () => {
 const Home = () => (
   <div className="home-container">
     <section className="h-hero">
-      <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070" alt="Velos Archive" className="h-hero-img" />
+      <video 
+        src="/images/hero-sectio.mp4" 
+        autoPlay 
+        loop 
+        muted 
+        playsInline 
+        className="h-hero-img"
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
       <div className="h-overlay">
         <h1 className="reveal-text">THE 2026 <br/> ARCHIVE</h1>
         <p className="stagger-in" style={{ animationDelay: '0.4s' }}>MODULAR UTILITY {" // "} STRUCTURAL PERMANENCE</p>
@@ -240,7 +321,7 @@ const Category = () => {
             {CAT_MAP[catId]?.map(sub => (
                 <button key={sub} className={activeSub === sub ? 'active' : ''} onClick={() => setActiveSub(sub)}>
                   {activeSub === sub && <div className="active-indicator" />}
-                  {sub}
+                  {sub.toUpperCase()}
                 </button>
             ))}
             </nav>
@@ -250,7 +331,7 @@ const Category = () => {
         {items.map((item, idx) => (
           <Link key={item.id} to={`/product/${item.id}`} className="cat-card stagger-in" style={{ animationDelay: `${idx * 0.05}s` }}>
             <div className="cc-media reveal-frame" style={{ animationDelay: `${idx * 0.05}s` }}>
-              <Media v={item.video} i={item.image} />
+              <Media item={item} />
             </div>
             <div className="cc-info">
               <span className="sku">{item.sku}</span>
@@ -275,12 +356,8 @@ const Product = () => {
     <div className="pd-root">
       <div className="pd-visual">
         <div className="pd-gallery">
-          <Media v={p.video} i={p.image} className="pd-gallery-item main reveal-frame" />
-          {p.images.map((img, idx) => (
-            <div key={idx} className="pd-gallery-item reveal-frame" style={{ animationDelay: `${(idx + 1) * 0.2}s` }}>
-              <img src={img} alt="" />
-            </div>
-          ))}
+          <Media item={p} className="pd-gallery-item main reveal-frame" />
+          <Media item={p} className="pd-gallery-item reveal-frame" style={{ animationDelay: '0.2s' }} />
         </div>
       </div>
       <div className="pd-sidebar">
@@ -310,7 +387,7 @@ const Product = () => {
               <summary>SPECIFICATIONS</summary>
               <div className="p-content">
                 <ul className="spec-list">
-                  {p.techSpecs.map(s => <li key={s}>{"// "} {s}</li>)}
+                  {p.techSpecs.map(s => <li key={s}>{" // "} {s}</li>)}
                 </ul>
               </div>
             </details>
@@ -349,29 +426,31 @@ export default function App() {
         @keyframes revealUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes revealFrame { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
         @keyframes drawerSlide { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        @keyframes scaleLoop { from { transform: scale(1); } to { transform: scale(1.08); } }
         @keyframes fadeMenu { from { opacity: 0; } to { opacity: 1; } }
 
         .stagger-in { animation: revealUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
         .reveal-frame { animation: revealFrame 1.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
         .reveal-text { animation: revealUp 1.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-        .cursor-dot { position: fixed; width: 12px; height: 12px; background: #000; border: 1px solid #fff; border-radius: 50%; z-index: 2000000; pointer-events: none; transform: translate(-50%, -50%); transition: transform 0.1s ease-out; }
+        .cursor-dot { position: fixed; width: 12px; height: 12px; background: #000; border: 1px solid #fff; border-radius: 50%; z-index: 2000000; pointer-events: none; transform: translate(-50%, -50%); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease; }
+        .cursor-dot.hover { transform: translate(-50%, -50%) scale(4); background: rgba(0,0,0,0.1); border: 0.5px solid #000; }
         .media-frame { width: 100%; height: 100%; position: relative; background: #f4f4f4; overflow: hidden; }
         .media-frame video { width: 100%; height: 100%; object-fit: cover; }
         
-        .site-nav { position: fixed; top: 0; width: 100%; background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); z-index: 21000; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .site-nav { position: fixed; top: 0; width: 100%; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 21000; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .scroll-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #000; transition: width 0.1s ease-out; }
         .nav-container { height: 100px; padding: 0 4vw; display: flex; align-items: center; justify-content: space-between; position: relative; }
         .nav-logo { font-size: 32px; font-weight: 900; letter-spacing: -2px; color: #000; text-decoration: none; position: absolute; left: 50%; transform: translateX(-50%); z-index: 2; }
         .nav-left { display: flex; align-items: center; gap: 40px; flex: 1; }
         .desktop-links { display: flex; gap: 30px; margin-left: 20px; }
-        .desktop-links a { text-decoration: none; color: #000; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: 0.6; }
+        .desktop-links a { text-decoration: none; color: #000; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; opacity: 0.6; transition: opacity 0.3s; }
+        .desktop-links a:hover { opacity: 1; }
         .nav-right { flex: 1; display: flex; justify-content: flex-end; }
         .menu-trigger { background: none; border: none; padding: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 30000; }
         .bar { width: 24px; height: 1.5px; background: #000; transition: 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         .bar.open:nth-child(1) { transform: translateY(4px) rotate(45deg); }
         .bar.open:nth-child(2) { transform: translateY(-4px) rotate(-45deg); }
-        .bag-trigger { background: none; border: none; font-weight: 900; font-size: 11px; letter-spacing: 1px; }
+        .bag-trigger { background: none; border: none; font-weight: 900; font-size: 11px; letter-spacing: 1px; color: #000; }
 
         .cat-root { display: flex; padding-top: 100px; min-height: 100vh; }
         .cat-sidebar { width: 350px; padding: 80px 4vw; position: sticky; top: 100px; height: calc(100vh - 100px); border-right: 1px solid #eee; overflow-y: auto; }
@@ -382,13 +461,14 @@ export default function App() {
         .active-indicator { position: absolute; left: 0; width: 2px; height: 18px; background: #000; }
 
         .cat-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 1px; background: #eee; }
-        .cat-card { background: #fff; padding: 60px; text-decoration: none; color: #000; display: flex; flex-direction: column; }
+        .cat-card { background: #fff; padding: 60px; text-decoration: none; color: #000; display: flex; flex-direction: column; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .cat-card:hover { transform: translateY(-10px); z-index: 2; }
         .cc-media { aspect-ratio: 3/4; margin-bottom: 40px; overflow: hidden; }
         .cc-info h4 { font-size: 18px; font-weight: 900; margin: 12px 0; letter-spacing: -0.5px; }
         .sku { font-size: 10px; color: #aaa; font-weight: 800; letter-spacing: 1.5px; }
 
         .h-hero { height: 100vh; position: relative; overflow: hidden; }
-        .h-hero-img { width: 100%; height: 100%; object-fit: cover; animation: scaleLoop 20s infinite alternate cubic-bezier(0.445, 0.05, 0.55, 0.95); }
+        .h-hero-img { width: 100%; height: 100%; object-fit: cover; }
         .h-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; background: rgba(0,0,0,0.25); padding: 0 4vw; }
         .h-overlay h1 { font-size: clamp(60px, 12vw, 180px); line-height: 0.85; letter-spacing: -6px; margin-bottom: 50px; }
         .h-btn { padding: 24px 70px; border: 1px solid #fff; color: #fff; font-weight: 900; letter-spacing: 3px; text-decoration: none; font-size: 11px; transition: 0.4s; }
@@ -463,7 +543,7 @@ export default function App() {
         .menu-links { display: flex; flex-direction: column; gap: 20px; }
         .menu-links a { font-size: clamp(32px, 5vw, 64px); font-weight: 900; letter-spacing: -3px; color: #000; text-decoration: none; line-height: 1; transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .menu-links a:hover { transform: translateX(20px); opacity: 0.5; }
-        .menu-footer { display: flex; justify-content: space-between; font-size: 11px; font-weight: 900; letter-spacing: 1px; border-top: 1px solid #eee; pt: 40px; padding-top: 40px; }
+        .menu-footer { display: flex; justify-content: space-between; font-size: 11px; font-weight: 900; letter-spacing: 1px; border-top: 1px solid #eee; padding-top: 40px; }
 
         @media (max-width: 1024px) {
           .nav-container { height: 90px; }
