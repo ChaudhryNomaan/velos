@@ -1,41 +1,51 @@
 import React, { useState, useEffect, useMemo, useRef, createContext, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 
-// Keeping ASSETS as a fallback for categories outside of MEN/WOMEN
+// Helper to ensure "base layer" becomes "base-layer" for URL paths
+const slugify = (text) => text.toLowerCase().replace(/\s+/g, '-');
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
 const ASSETS = Array.from({ length: 45 }, (_, i) => ({
   v: `/images/vid${i + 1}.mp4`, 
   i: `/images/img${i + 1}.jpg`
 }));
 
 const CAT_MAP = {
-  "WOMEN": ["accessories", "base layer", "draped form", "footwear", "kneatwear", "outerwear", "tailoring"],
-  "MEN": ["accessories", "base layer", "draped form", "footwear", "kneatwear", "outerwear", "tailoring"],
-  "LAB": ["Prototyping", "Hardware", "Liminal Space", "Bio-Textiles", "Wearable Tech", "Acoustic Shells"],
-  "RE-SALE": ["2022 Archive", "2023 Archive", "Sample Sale", "Refurbished Units", "Collector Pieces"],
-  "COMMUNE": ["Editorial", "Film", "Soundtrack", "Store Locations", "Manifesto"]
+  "WOMEN": ["accessories", "footwear", "kneatwear", "outerwear", "tailoring"],
+  "MEN": ["accessories", "footwear", "kneatwear", "outerwear", "tailoring"],
+  "LAB": ["Prototyping", "Hardware"],
+  // "RE-SALE": ["2022 Archive", "2023 Archive", "Sample Sale", "Refurbished Units", "Collector Pieces"],
+  "COMMUNE": ["Editorial", "Film", "Soundtrack", "Manifesto"]
 };
 
 const MASTER_VAULT = [];
 Object.keys(CAT_MAP).forEach((cat, ci) => {
   CAT_MAP[cat].forEach((sub, si) => {
-    const actualImageCount = 20; 
     for (let i = 1; i <= 34; i++) {
-      const imageIndex = ((i - 1) % actualImageCount) + 1;
+      const catPath = slugify(cat);
+      const subPath = slugify(sub);
+      const imageIndex = ((i - 1) % 10) + 1; 
+      
+      // Dynamic logic for all categories: /lab/prototyping/1.jpg, /women/base-layer/1.jpg, etc.
+      const localBase = `/${catPath}/${subPath}/${imageIndex}`;
+
       const idx = (ci + si + i) % ASSETS.length;
-      const isClothes = cat === "WOMEN" || cat === "MEN";
-      const genderPath = cat.toLowerCase();
-      const subPath = sub.toLowerCase(); 
-      const localBase = isClothes ? `/${genderPath}/${subPath}/${imageIndex}` : `/images/${genderPath}/${subPath}/${imageIndex}`;
 
       MASTER_VAULT.push({
-        id: `velos-${cat}-${sub}-${i}`.toLowerCase().replace(/\s+/g, '-'),
+        id: `velos-${catPath}-${subPath}-${i}`,
         category: cat,
         subCategory: sub,
         name: cat === "COMMUNE" ? `${sub.toUpperCase()} // VOL.${i < 10 ? '0'+i : i}` : `${sub.toUpperCase()} UNIT ${100 + i}`,
         price: (450 + (si * 50) + (i * 15)).toFixed(2),
         sku: `VL-26-${cat.slice(0, 2)}-${si}${i}`,
         basePath: localBase,
-        isClothes: isClothes,
         fallbackIdx: idx,
         description: cat === "COMMUNE" 
           ? "A visual exploration of the VELOS philosophy through the lens of industrial photography."
@@ -97,17 +107,17 @@ const MinimalCursor = () => {
 
 const Media = ({ item, className="" }) => {
   const [stage, setStage] = useState(0); 
-  const extensions = ['mp4', 'jpg', 'webp'];
+  const extensions = ['jpg', 'webp', 'png', 'mp4']; 
 
   useEffect(() => {
     setStage(0);
   }, [item.basePath]);
 
   const handleError = () => {
-    if (stage < 3) setStage(prev => prev + 1);
+    if (stage < extensions.length) setStage(prev => prev + 1);
   };
 
-  if (!item.isClothes) {
+  if (stage >= extensions.length) {
     return (
       <div className={`media-frame ${className}`}>
         <img src={ASSETS[item.fallbackIdx].i} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -115,32 +125,20 @@ const Media = ({ item, className="" }) => {
     );
   }
 
-  if (stage === 3) {
-      return (
-        <div className={`media-frame ${className}`}>
-             <img src={ASSETS[item.fallbackIdx].i} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      );
-  }
-
   const currentPath = `${item.basePath}.${extensions[stage]}`;
 
   return (
     <div className={`media-frame ${className}`}>
-      {stage === 0 ? (
+      {extensions[stage] === 'mp4' ? (
         <video 
-          key={currentPath + "-vid"}
-          src={currentPath} 
-          autoPlay loop muted playsInline 
-          onError={handleError}
+          key={currentPath} src={currentPath} 
+          autoPlay loop muted playsInline onError={handleError}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       ) : (
         <img 
-          key={currentPath + "-img"}
-          src={currentPath} 
-          alt="" 
-          onError={handleError} 
+          key={currentPath} src={currentPath} 
+          alt="" onError={handleError} 
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       )}
@@ -156,7 +154,7 @@ const Nav = () => {
     const handleScroll = () => {
       const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
       const currentScroll = window.scrollY;
-      setScrollProgress((currentScroll / totalScroll) * 100);
+      setScrollProgress((currentScroll / (totalScroll || 1)) * 100);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -309,9 +307,10 @@ const Category = () => {
   const [activeSub, setActiveSub] = useState("");
   useEffect(() => {
     if (CAT_MAP[catId]) setActiveSub(CAT_MAP[catId][0]);
-    window.scrollTo(0, 0);
   }, [catId]);
+  
   const items = useMemo(() => MASTER_VAULT.filter(i => i.category === catId && i.subCategory === activeSub), [catId, activeSub]);
+  
   return (
     <div className="cat-root">
       <aside className="cat-sidebar">
@@ -330,7 +329,7 @@ const Category = () => {
       <div className="cat-grid">
         {items.map((item, idx) => (
           <Link key={item.id} to={`/product/${item.id}`} className="cat-card stagger-in" style={{ animationDelay: `${idx * 0.05}s` }}>
-            <div className="cc-media reveal-frame" style={{ animationDelay: `${idx * 0.05}s` }}>
+            <div className="cc-media reveal-frame">
               <Media item={item} />
             </div>
             <div className="cc-info">
@@ -350,7 +349,6 @@ const Product = () => {
   const navigate = useNavigate();
   const { addToBag } = useContext(VelosContext);
   const p = useMemo(() => MASTER_VAULT.find(i => i.id === prodId), [prodId]);
-  useEffect(() => { window.scrollTo(0, 0); }, [prodId]);
   if (!p) return null;
   return (
     <div className="pd-root">
@@ -409,6 +407,7 @@ export default function App() {
   return (
     <VelosProvider>
       <Router>
+        <ScrollToTop />
         <MinimalCursor />
         <Nav />
         <MobileOverlay />
@@ -435,7 +434,6 @@ export default function App() {
         .cursor-dot { position: fixed; width: 12px; height: 12px; background: #000; border: 1px solid #fff; border-radius: 50%; z-index: 2000000; pointer-events: none; transform: translate(-50%, -50%); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease; }
         .cursor-dot.hover { transform: translate(-50%, -50%) scale(4); background: rgba(0,0,0,0.1); border: 0.5px solid #000; }
         .media-frame { width: 100%; height: 100%; position: relative; background: #f4f4f4; overflow: hidden; }
-        .media-frame video { width: 100%; height: 100%; object-fit: cover; }
         
         .site-nav { position: fixed; top: 0; width: 100%; background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 21000; border-bottom: 1px solid rgba(0,0,0,0.05); }
         .scroll-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #000; transition: width 0.1s ease-out; }
@@ -519,7 +517,6 @@ export default function App() {
         .bag-list { flex: 1; overflow-y: auto; padding: 40px; display: flex; flex-direction: column; gap: 40px; }
         .bag-item { display: flex; gap: 30px; }
         .bag-item-img { width: 120px; aspect-ratio: 3/4; background: #f4f4f4; }
-        .bag-item-img img { width: 100%; height: 100%; object-fit: cover; }
         .bi-details { flex: 1; display: flex; flex-direction: column; }
         .bi-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .bi-top h4 { font-size: 13px; font-weight: 900; }
@@ -529,15 +526,11 @@ export default function App() {
         .bag-footer { padding: 40px; border-top: 1px solid #eee; }
         .total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 14px; margin-bottom: 30px; }
         .checkout-btn { width: 100%; background: #000; color: #fff; border: none; padding: 22px; font-weight: 900; font-size: 11px; letter-spacing: 2px; }
-        .empty-msg-wrap { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
-        .empty-msg { font-weight: 900; color: #ccc; font-size: 12px; letter-spacing: 2px; }
-        .shop-btn { background: #000; color: #fff; border: none; padding: 15px 30px; font-weight: 900; font-size: 10px; letter-spacing: 2px; }
 
         .menu-overlay { position: fixed; inset: 0; background: #fff; z-index: 25000; animation: fadeMenu 0.4s ease both; }
         .menu-close-x { position: absolute; top: 40px; right: 4vw; z-index: 30000; background: none; border: none; font-weight: 900; font-size: 11px; letter-spacing: 2px; cursor: pointer; }
         .menu-inner { display: flex; height: 100%; }
         .menu-visual { flex: 1; height: 100%; overflow: hidden; background: #f0f0f0; }
-        .menu-visual img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
         .menu-content { width: 50%; padding: 120px 6vw; display: flex; flex-direction: column; justify-content: space-between; }
         .menu-header { font-size: 10px; font-weight: 900; letter-spacing: 4px; color: #aaa; }
         .menu-links { display: flex; flex-direction: column; gap: 20px; }
