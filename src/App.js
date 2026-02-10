@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useParams } from 'react-router-dom';
 
-/** * 1. THE ARCHIVE DATA (VELOS) */
 const ASSETS = [
   { v: "https://assets.mixkit.co/videos/preview/mixkit-fashion-model-showing-off-a-black-outfit-34505-large.mp4", i: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=1600" },
   { v: "https://assets.mixkit.co/videos/preview/mixkit-woman-modeling-a-white-dress-34506-large.mp4", i: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600" },
@@ -40,7 +39,6 @@ Object.keys(CAT_MAP).forEach((cat, ci) => {
   });
 });
 
-/** * 2. STATE MANAGEMENT & CONTEXT */
 const VelosContext = createContext();
 
 export const VelosProvider = ({ children }) => {
@@ -62,7 +60,6 @@ export const VelosProvider = ({ children }) => {
   );
 };
 
-/** * 3. MAGNETIC VELOCITY CURSOR */
 const MagneticCursor = () => {
   const { cursorText } = useContext(VelosContext);
   const ringRef = useRef(null);
@@ -103,7 +100,6 @@ const MagneticCursor = () => {
   );
 };
 
-/** * 4. MEDIA COMPONENT */
 const Media = ({ v, i, className="" }) => (
   <div className={`media-frame ${className}`}>
     <video src={v} autoPlay loop muted playsInline poster={i} />
@@ -114,7 +110,6 @@ const Media = ({ v, i, className="" }) => (
   </div>
 );
 
-/** * 5. NAVIGATION & HAMBURGER */
 const Nav = () => {
   const { cart, setIsBagOpen, isMenuOpen, setIsMenuOpen, setCursorText } = useContext(VelosContext);
   return (
@@ -176,7 +171,6 @@ const MobileOverlay = () => {
   );
 };
 
-/** * 6. HOME PAGE (SCROLLING EDITORIAL) */
 const Home = () => {
   const { setCursorText } = useContext(VelosContext);
   return (
@@ -246,7 +240,6 @@ const Home = () => {
   );
 };
 
-/** * 7. CATEGORY PAGE (FULL GRID) */
 const Category = () => {
   const { catId } = useParams();
   const { setCursorText } = useContext(VelosContext);
@@ -306,7 +299,6 @@ const Category = () => {
   );
 };
 
-/** * 8. PRODUCT DETAIL (TECHNICAL) */
 const Product = () => {
   const { prodId } = useParams();
   const { addToBag, setCursorText } = useContext(VelosContext);
@@ -373,7 +365,6 @@ const Product = () => {
   );
 };
 
-/** * 9. SHOPPING BAG DRAWER */
 const ShoppingBag = () => {
   const { cart, isBagOpen, setIsBagOpen, removeFromBag } = useContext(VelosContext);
   const total = cart.reduce((acc, i) => acc + parseFloat(i.price), 0).toFixed(2);
@@ -421,7 +412,6 @@ const ShoppingBag = () => {
   );
 };
 
-/** * 10. APP ROOT */
 export default function App() {
   return (
     <VelosProvider>
